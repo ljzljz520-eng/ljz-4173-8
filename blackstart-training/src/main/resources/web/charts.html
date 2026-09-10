@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8"/>
+    <title>频率/电压曲线</title>
+    <style>
+        html, body { margin: 0; padding: 0; height: 100%; background: #1e2229; color: #e6e6e6;
+            font-family: "Microsoft YaHei", sans-serif; }
+        #wrap { display: flex; flex-direction: column; height: 100%; }
+        .chart { flex: 1; min-height: 0; }
+        #msg { padding: 4px 10px; font-size: 12px; color: #9fb4d8; }
+        #fallback { display:none; padding:24px; color:#ffd089; }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+</head>
+<body>
+<div id="wrap">
+    <div id="msg">等待遥测数据（仿真节拍 2s）…</div>
+    <div id="freqChart" class="chart"></div>
+    <div id="voltChart" class="chart"></div>
+    <div id="fallback">ECharts 未能从 CDN 加载（离线环境）。频率/电压数值仍可在“事件流/复盘”页查看；
+        如需曲线图，请将 echarts.min.js 放到本程序 resources/web 目录后重启。</div>
+</div>
+<script>
+    let freqChart = null, voltChart = null;
+    const freqSeries = {}; // islandId -> points [{t,f}]
+    const voltSeries = {}; // busId -> points [{t,v}]
+    let startTime = null;
+
+    function axis(name) {
+        return {
+            tooltip: { trigger: 'axis' },
+            legend: { textStyle: { color: '#cfcfcf' }, top: 4 },
+            grid: { left: 52, right: 18, top: 36, bottom: 28 },
+            xAxis: { type: 'value', name: '仿真秒', nameTextStyle:{color:'#aaa'},
+                     axisLabel: { color: '#aaa' }, splitLine: { lineStyle: { color: '#333a46' } } },
+            yAxis: { type: 'value', name: name, nameTextStyle:{color:'#aaa'},
+                     axisLabel: { color: '#aaa' }, splitLine: { lineStyle: { color: '#333a46' } } },
+            series: [],
+            animation: false
+        };
+    }
+
+    function boot() {
+        if (typeof echarts === 'undefined') {
+            document.getElementById('fallback').style.display = 'block';
+            document.getElementById('freqChart').style.display = 'none';
+            document.getElementById('voltChart').style.display = 'none';
+            return;
+        }
+        freqChart = echarts.init(document.getElementById('freqChart'), 'dark');
+        voltChart = echarts.init(document.getElementById('voltChart'), 'dark');
+        freqChart.setOption(axis('频率 Hz'));
+        voltChart.setOption(axis('电压 p.u.'));
+        window.addEventListener('resize', () => { freqChart.resize(); voltChart.resize(); });
+    }
+
+    function pushTelemetry(payload, simTime) {
+        if (!freqChart) { boot(); }
+        if (typeof echarts === 'undefined') return;
+        const t = simTime;
+        if (startTime === null) startTime = t;
+        const sec = (t - startTime) / 1000.0;
+
+        (payload.islands || []).forEach(is => {
+            (freqSeries[is.islandId] = freqSeries[is.islandId] || []).push([sec, is.frequencyHz]);
+        });
+        (payload.buses || []).forEach(b => {
+            if (b.voltagePu > 0) {
+                (voltSeries[b.busId] = voltSeries[b.busId] || []).push([sec, b.voltagePu]);
+            }
+        });
+
+        const fOpt = axis('频率 Hz');
+        fOpt.series = Object.keys(freqSeries).map(k => ({
+            name: k, type: 'line', showSymbol: false, data: freqSeries[k],
+            markLine: { silent: true, symbol: 'none', data: [
+                { yAxis: 49.8, lineStyle: { color: '#e57' }, label: { formatter: 'f低限' } },
+                { yAxis: 50.2, lineStyle: { color: '#e57' }, label: { formatter: 'f高限' } },
+                { yAxis: 49.0, lineStyle: { color: '#f80', type: 'dashed' },
+                  label: { formatter: '低频减载' } }
+            ]}
+        }));
+        freqChart.setOption(fOpt, true);
+
+        const vOpt = axis('电压 p.u.');
+        vOpt.series = Object.keys(voltSeries).map(k => ({
+            name: k, type: 'line', showSymbol: false, data: voltSeries[k],
+            markLine: { silent: true, symbol: 'none', data: [
+                { yAxis: 0.95, lineStyle: { color: '#e57' }, label: { formatter: 'U低限' } },
+                { yAxis: 1.07, lineStyle: { color: '#e57' }, label: { formatter: 'U高限' } }
+            ]}
+        }));
+        voltChart.setOption(vOpt, true);
+        document.getElementById('msg').textContent =
+            '已收到 ' + Object.values(freqSeries).reduce((a,p)=>a+p.length,0) + ' 个频率采样点';
+    }
+
+    function clearCharts() {
+        Object.keys(freqSeries).forEach(k => delete freqSeries[k]);
+        Object.keys(voltSeries).forEach(k => delete voltSeries[k]);
+        startTime = null;
+        if (freqChart) { freqChart.setOption(axis('频率 Hz'), true); }
+        if (voltChart) { voltChart.setOption(axis('电压 p.u.'), true); }
+    }
+    window.addEventListener('load', boot);
+</script>
+</body>
+</html>

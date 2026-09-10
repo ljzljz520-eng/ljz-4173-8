@@ -1,0 +1,154 @@
+[ {
+  "id" : "demo-blackstart",
+  "name" : "黑启动标准复盘场景",
+  "description" : "A水电黑启动→母线充电→线路送电→B火电厂用电与并网→负荷恢复；BC线含隐藏充电故障",
+  "version" : 1,
+  "frozenAt" : "2026-01-01T00:00:00Z",
+  "buses" : [ {
+    "id" : "bus-A-110",
+    "name" : "A站110kV I母",
+    "substation" : "A水电站",
+    "voltageLevel" : "KV_110"
+  }, {
+    "id" : "bus-A-10",
+    "name" : "A站10kV厂用电",
+    "substation" : "A水电站",
+    "voltageLevel" : "KV_10"
+  }, {
+    "id" : "bus-B-220",
+    "name" : "B站220kV母线",
+    "substation" : "B火电厂",
+    "voltageLevel" : "KV_220"
+  }, {
+    "id" : "bus-B-10",
+    "name" : "B站10kV厂用电",
+    "substation" : "B火电厂",
+    "voltageLevel" : "KV_10"
+  }, {
+    "id" : "bus-C-220",
+    "name" : "C站220kV母线",
+    "substation" : "C变电站",
+    "voltageLevel" : "KV_220"
+  }, {
+    "id" : "bus-C-10",
+    "name" : "C站10kV母线",
+    "substation" : "C变电站",
+    "voltageLevel" : "KV_10"
+  } ],
+  "generators" : [ {
+    "id" : "gen-A-hydro",
+    "name" : "A水电站#1机",
+    "busId" : "bus-A-110",
+    "ratedMw" : 30.0,
+    "minStableMw" : 5.0,
+    "rampMwPerMin" : 3.0,
+    "blackstartCapable" : true,
+    "initiallyRunning" : false
+  }, {
+    "id" : "gen-B-thermal",
+    "name" : "B火电厂#1机",
+    "busId" : "bus-B-220",
+    "ratedMw" : 200.0,
+    "minStableMw" : 60.0,
+    "rampMwPerMin" : 2.0,
+    "blackstartCapable" : false,
+    "initiallyRunning" : false
+  } ],
+  "lines" : [ {
+    "id" : "line-A-station",
+    "name" : "A水电站110/10kV主变",
+    "fromBusId" : "bus-A-110",
+    "toBusId" : "bus-A-10",
+    "rPu" : 0.002,
+    "xPu" : 0.01,
+    "thermalLimitMw" : 40.0,
+    "initiallyClosed" : false,
+    "tieLine" : false
+  }, {
+    "id" : "line-AB",
+    "name" : "AB线220kV(经联络变)",
+    "fromBusId" : "bus-A-110",
+    "toBusId" : "bus-B-220",
+    "rPu" : 0.01,
+    "xPu" : 0.05,
+    "thermalLimitMw" : 150.0,
+    "initiallyClosed" : false,
+    "tieLine" : false
+  }, {
+    "id" : "line-B-station",
+    "name" : "B站高压厂用变",
+    "fromBusId" : "bus-B-220",
+    "toBusId" : "bus-B-10",
+    "rPu" : 0.002,
+    "xPu" : 0.01,
+    "thermalLimitMw" : 80.0,
+    "initiallyClosed" : false,
+    "tieLine" : false
+  }, {
+    "id" : "line-BC",
+    "name" : "BC线220kV",
+    "fromBusId" : "bus-B-220",
+    "toBusId" : "bus-C-220",
+    "rPu" : 0.012,
+    "xPu" : 0.06,
+    "thermalLimitMw" : 150.0,
+    "initiallyClosed" : false,
+    "tieLine" : false
+  }, {
+    "id" : "line-C-station",
+    "name" : "C站2号主变",
+    "fromBusId" : "bus-C-220",
+    "toBusId" : "bus-C-10",
+    "rPu" : 0.002,
+    "xPu" : 0.01,
+    "thermalLimitMw" : 80.0,
+    "initiallyClosed" : false,
+    "tieLine" : false
+  } ],
+  "loads" : [ {
+    "id" : "load-B-aux",
+    "name" : "B火电厂厂用电(重要)",
+    "busId" : "bus-B-10",
+    "mw" : 18.0,
+    "priority" : 1,
+    "initiallyConnected" : false
+  }, {
+    "id" : "load-C-critical",
+    "name" : "C站一类负荷",
+    "busId" : "bus-C-10",
+    "mw" : 20.0,
+    "priority" : 1,
+    "initiallyConnected" : false
+  }, {
+    "id" : "load-C-normal",
+    "name" : "C站一般负荷",
+    "busId" : "bus-C-10",
+    "mw" : 40.0,
+    "priority" : 2,
+    "initiallyConnected" : false
+  }, {
+    "id" : "load-C-large",
+    "name" : "C站大容量工业负荷",
+    "busId" : "bus-C-10",
+    "mw" : 90.0,
+    "priority" : 3,
+    "initiallyConnected" : false
+  } ],
+  "hiddenFaults" : [ {
+    "id" : "fault-BC",
+    "elementId" : "line-BC",
+    "kind" : "LINE_TRIP_ON_ENERGIZE",
+    "description" : "BC线电缆头绝缘隐患，充电即跳（学员不可见）"
+  } ],
+  "protection" : {
+    "fMinHz" : 49.8,
+    "fMaxHz" : 50.2,
+    "vMinPu" : 0.95,
+    "vMaxPu" : 1.07,
+    "syncDfMaxHz" : 0.2,
+    "syncDvMaxPu" : 0.1,
+    "syncDangleDeg" : 20.0,
+    "hardCloseDangleDeg" : 10.0,
+    "underFreqShedHz" : 49.0
+  }
+} ]
